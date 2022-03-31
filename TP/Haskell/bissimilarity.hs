@@ -3,6 +3,7 @@
 import qualified Data.Map as M
 import qualified Data.Maybe as May
 import qualified Data.Set as S
+import Data.List (nub)
 
 type State = Integer
 type Name = String
@@ -50,15 +51,41 @@ extendBissim lts s t =
             else mempty
 
 bissimulation :: LTS -> LTS -> State -> State -> S.Set (State, State)
-bissimulation l1 l2 p q = helper [(p,q)] (S.fromList [(p, q), (q, p)])
+bissimulation l1 l2 p q = helper [(p,q)] (S.fromList [(p, q)])
     where
         helper [] set = set
         helper ((s, t) : rest) !set =
             let newPairs, newPairs' :: S.Set (State, State)
                 newPairs = extendBissim l1 s t
-                newPairs' = extendBissim l2 t s
+                -- Necessário inverter ordem dos pares que resultam desta alternativa.
+                -- Ver exercício 1 da ficha 2 - quando se verificam alternativas de
+                -- (a, b), e se deu o passo primeiro em b, os pares (a', b') podem
+                -- ser considerados em qualquer ordem - (a', b'), (b', a'), mas a função de fecho
+                -- transitivo abaixo tratará de calcular (b', a') por nós.
+                newPairs' = S.map (\(a, b) -> (b, a))$ extendBissim l2 t s
                 extension = newPairs `S.union` newPairs'
             in case (null newPairs || null newPairs', extension `S.isSubsetOf` set) of
                     (True, _) -> S.empty
                     (_, True) -> set
                     (_, _)    -> helper (S.toList extension ++ rest) (set `S.union` extension)
+
+transitiveClosure :: Ord a => S.Set (a, a) -> S.Set (a, a)
+transitiveClosure closure = helper closure'
+    where
+        closureList = S.toList closure
+        reflexive = S.fromList $ [(a, a) | (a, _) <- closureList]
+        symmetric = S.fromList $ [(b, a) | (a, b) <- closureList]
+        closure' = S.unions [closure, reflexive, symmetric]
+
+        helper :: Ord a => S.Set (a, a) -> S.Set (a, a)
+        helper set
+            | set == closureUntilNow = set
+            | otherwise              = transitiveClosure closureUntilNow
+            where
+                list = S.toList set
+                closureUntilNow =
+                    S.unions [
+                        set,
+                        S.fromList [(a, c) | (a, b) <- list, (b', c) <- list, b == b'],
+                        S.fromList [(c, a) | (a, b) <- list, (b', c) <- list, b == b']
+                    ]
