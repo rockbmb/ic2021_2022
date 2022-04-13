@@ -5,6 +5,7 @@ import qualified Data.Maybe as May
 import qualified Data.Set as S
 import Data.List (nub)
 
+
 type State = Integer
 type Name = String
 
@@ -26,28 +27,50 @@ lts = M.fromList [
     (9, S.empty)
     ]
 
--- States reachable from an LTS via a certain label.
+lts2 :: LTS
+lts2 = M.fromList [
+    (1, S.fromList [("a", 2)]),
+
+    (2, S.fromList [("b", 3), ("c", 4)])
+    ]
+
+lts3 :: LTS
+lts3 = M.fromList [
+    (5, S.fromList [("a", 6), ("a", 8)]),
+
+    (6, S.fromList [("b", 7)]),
+    (8, S.fromList [("c", 9)])
+    ]
+
+-- Given an LTS, a state and a label, return the set of states in that LTS which are reachable from
+-- that state, via the provided label label.
 next :: LTS -> State -> Name -> S.Set State
 next lts s n = May.fromMaybe S.empty $ do
     labelsToStateSet <- M.lookup s lts
     return $ S.map snd $ S.filter (\(name, _) -> name == n) labelsToStateSet
 
--- Get all the labels used by a state's transitions.
+-- Given an LTS and a state, return all the labels out of that state, in that LTS.
 labelsFromState :: LTS -> State -> S.Set Name
 labelsFromState lts s = May.fromMaybe S.empty $ do
     labelsToStateSet <- M.lookup s lts
     return $ S.map fst labelsToStateSet
 
-extendBissim :: LTS -> State -> State -> S.Set (State, State)
-extendBissim lts s t =
-    let labelsFromS = labelsFromState lts s
+-- Given two states and their respective LTS, return the set of
+-- new possible relations with which to extend the bissimulation
+-- being built.
+-- The state/LTS used to "take the first step" are first ones provided,
+-- and the second state/LTS argument will attempt to replicate the movements
+-- taken in the first.
+extendBissim :: LTS -> LTS -> State -> State -> S.Set (State, State)
+extendBissim lts1 lts2 s t =
+    let labelsFromS = labelsFromState lts1 s
         -- Implication as disjunction:
         -- there exist transitions labeled "lab" from state s => there must also exist "lab" transitions for t
         pred set1 set2 = null set1 || not (null set2)
-    in if all (\lab -> pred (next lts s lab) (next lts t lab)) labelsFromS
+    in if all (\lab -> pred (next lts1 s lab) (next lts2 t lab)) labelsFromS
             then S.fromList [(s', t') | lab <- S.toList labelsFromS
-                                      , s' <- S.toList $ next lts s lab
-                                      , t' <- S.toList $ next lts t lab]
+                                      , s' <- S.toList $ next lts1 s lab
+                                      , t' <- S.toList $ next lts2 t lab]
             else mempty
 
 bissimulation :: LTS -> LTS -> State -> State -> S.Set (State, State)
@@ -56,15 +79,15 @@ bissimulation l1 l2 p q = helper [(p,q)] (S.fromList [(p, q)])
         helper [] set = set
         helper ((s, t) : rest) !set =
             let newPairs, newPairs' :: S.Set (State, State)
-                newPairs = extendBissim l1 s t
+                newPairs = extendBissim l1 l2 s t
                 -- Necessário inverter ordem dos pares que resultam desta alternativa.
                 -- Ver exercício 1 da ficha 2 - quando se verificam alternativas de
                 -- (a, b), e se deu o passo primeiro em b, os pares (a', b') podem
                 -- ser considerados em qualquer ordem - (a', b'), (b', a'), mas a função de fecho
                 -- transitivo abaixo tratará de calcular (b', a') por nós.
-                newPairs' = S.map (\(a, b) -> (b, a))$ extendBissim l2 t s
+                newPairs' = S.map (\(a, b) -> (b, a)) $ extendBissim l2 l1 t s
                 extension = newPairs `S.union` newPairs'
-            in case (null newPairs || null newPairs', extension `S.isSubsetOf` set) of
+            in case (null newPairs /= null newPairs', extension `S.isSubsetOf` set) of
                     (True, _) -> S.empty
                     (_, True) -> set
                     (_, _)    -> helper (S.toList extension ++ rest) (set `S.union` extension)
