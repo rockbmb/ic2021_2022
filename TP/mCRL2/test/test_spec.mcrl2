@@ -1,0 +1,21 @@
+act press, change, changeLight;
+
+sort StLamp = struct off | low | bright;
+	 Duration = struct lt5 | mt5;
+
+map nextSt: StLamp -> StLamp;
+
+eqn
+	nextSt(off) = low;
+	nextSt(low) = bright;
+	nextSt(bright) = off;
+
+proc
+	User = sum d: Duration . press(d) . User;
+%	User = press.User;
+
+	Lamp(st:StLamp) = change.Lamp(nextSt(st));
+
+init
+	allow({changeLight},
+		comm({press|change -> changeLight}, User || Lamp(off)));
