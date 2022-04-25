@@ -1,0 +1,7 @@
+<root>
+ <spec>Bridge_spec.mcrl2</spec>
+ <properties>
+  <property>Possible for all 4 adventurers to cross in 17 minutes</property>
+  <property>Impossible for all 4 adventurers to cross in under 17 minutes</property>
+ </properties>
+</root>

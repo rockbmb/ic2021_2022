@@ -1,0 +1,136 @@
+% Specification for the rope bridge problem
+% (based on Bas Ploeger, 2008)
+
+% Adventurers are identified by their "crossing_times", i.e. the number of
+% minutes they need for crossing the bridge. For this we use the basic
+% integer data type of mCRL2 called 'Int'.
+
+% Data type for the position of adventurers and the flashlight.
+% Initially, they are all on the 'start' side of the bridge. In the end,
+% they should all have reached the 'finish' side.
+sort Position = struct start | finish;
+
+act
+    % The flashlight moves forward together with two adventurers,
+    % identified by the action's parameters.
+    forward_flashlight : Int # Int;
+    % The flashlight moves back together with one adventurer, identified
+    % by the action's parameter.
+    back_flashlight : Int;
+
+    report : Int; % the referee reports that all adventurers have
+                 % crossed the bridge along with the time that it took
+
+
+%%% TODO (Exercise 1):
+%%% Add action declarations for Adventurer process here
+act forward_adventurer: Int # Int;
+    back_adventurer: Int;
+
+%%% TODO (Exercise 2):
+%%% Add action declarations for synchronised events.
+act forward : Int # Int; % two adventurers and a flashlight move forward
+                         % and the referee processes this
+    back : Int;          % one adventurer and a flashlight move back and the
+                         % referee processes this
+
+%%% TODO (Exercise 5):
+%%% Add action declarations for Referee process.
+act forward_referee : Int # Int; % the referee processes a forward movement
+    back_referee : Int;          % the referee processes a back movement
+
+% The Flashlight process models the flashlight:
+% 1. If it is at the 'start' side, it can move forward together with any
+%    pair of adventurers.
+% 2. If it is at the 'finish' side, it can move back together with any
+%    adventurer.
+proc Flashlight(pos : Position) =
+  (pos == start) ->
+    % Case 1.
+    sum s,s' : Int . forward_flashlight(s, s') . Flashlight(finish)
+  <>
+    % Case 2.
+    sum s : Int . back_flashlight(s) . Flashlight(start);
+
+
+%%% TODO (Exercise 1):
+%%% Add Adventurer process definition here
+
+% Models an adventurer who can move to the other side of the bridge with
+% its designated crossing time.
+proc Adventurer(crossing_time : Int, pos : Position) =
+  (pos == start) ->
+    ( sum t : Int .
+      % keep the parameters of forward actions sorted; otherwise
+      % we get two transitions for every forward movement of
+      % adventurers with crossing times X and Y -- forward(X,Y) and
+      % forward(Y,X) -- both leading to the same state and
+      % modelling the same event.
+      (t > crossing_time) ->
+        forward_adventurer(crossing_time, t)
+        . Adventurer(crossing_time, finish)
+        <> forward_adventurer(t, crossing_time)
+        . Adventurer(crossing_time, finish)
+    )
+  % position == finish
+  <>  back_adventurer(crossing_time) . Adventurer(crossing_time, start);
+
+%%% TODO (Exercise 5):
+%%% Add Referee process definition here
+
+proc Referee(minutes:Int, num_finished:Int) =
+  sum s, s' : Int . forward_referee(s, s')
+                  . Referee(minutes + max(s, s'), num_finished + 2)
+  +
+  (num_finished < 4) ->
+    sum s : Int . back_referee(s)
+                . Referee(minutes + s, num_finished - 1)
+  <> % num_finished >= 4
+    report(minutes) . Referee(minutes, num_finished);
+
+%%% TODO (Exercise 2):
+%%% Add the four Adventurer processes to this definition
+
+%init
+%  Adventurer(1,start) || Adventurer(2,start) || Adventurer(5,start) || Adventurer(10,start) || Flashlight(start)
+
+
+%%% TODO (Exercise 5):
+%%% Add the Referee process to this definition
+
+% A versão seguinte já com sincronização:
+%init
+%  comm({forward_adventurer | forward_adventurer | forward_flashlight -> forward,
+%        back_adventurer | back_flashlight -> back },
+%    Adventurer(1,start) || Adventurer(2,start) || Adventurer(5,start) || Adventurer(10,start) || Flashlight(start)
+%  );
+
+% A última, com o Referee
+%init
+%  allow({forward, back, report},
+%    comm({forward_adventurer | forward_adventurer | forward_flashlight -> forward,
+%          back_adventurer | back_flashlight -> back},
+%      Adventurer(1,start) || Adventurer(2,start) || Adventurer(5,start) || Adventurer(10,start) || Flashlight(start)
+%    )
+%  );
+
+% Initial process definition
+init
+  allow({forward, back, report},
+   comm({forward_adventurer | forward_adventurer | forward_flashlight | forward_referee
+            -> forward,
+         back_adventurer | back_flashlight | back_referee -> back},
+       Adventurer(1,start) || Adventurer(2,start)  || 
+       Adventurer(5,start) || Adventurer(10,start) || 
+       Flashlight(start)   || Referee(0, 0)
+     ));
+
+%%%%%%%
+% Extra
+%%%%%%%
+
+% Fórmula em μ-calculus de que é possível que todos atravessem a ponte em 17 minutos.
+% < true* . report(17) > true
+
+% Fórmula que prova que qualquer travessia inferior a 17 minutos e impossível.
+% forall x : Nat . val(x < 17) => [true* . report(x)] false
