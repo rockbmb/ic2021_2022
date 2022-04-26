@@ -1,0 +1,1 @@
+forall y : Nat . val(y < 5) => [true* . report(17, y)] false

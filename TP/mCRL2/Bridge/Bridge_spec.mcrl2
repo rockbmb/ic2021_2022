@@ -18,8 +18,11 @@ act
     % by the action's parameter.
     back_flashlight : Int;
 
-    report : Int; % the referee reports that all adventurers have
-                 % crossed the bridge along with the time that it took
+    report : Int # Int;
+    % the referee reports that all adventurers have
+    % crossed the bridge along with the time that it took,
+    % as well as how many crossings it took.
+
 
 
 %%% TODO (Exercise 1):
@@ -78,15 +81,15 @@ proc Adventurer(crossing_time : Int, pos : Position) =
 %%% TODO (Exercise 5):
 %%% Add Referee process definition here
 
-proc Referee(minutes:Int, num_finished:Int) =
+proc Referee(minutes : Int, num_finished : Int, num_crossings : Int) =
   sum s, s' : Int . forward_referee(s, s')
-                  . Referee(minutes + max(s, s'), num_finished + 2)
+                  . Referee(minutes + max(s, s'), num_finished + 2, num_crossings + 1)
   +
   (num_finished < 4) ->
     sum s : Int . back_referee(s)
-                . Referee(minutes + s, num_finished - 1)
+                . Referee(minutes + s, num_finished - 1, num_crossings + 1)
   <> % num_finished >= 4
-    report(minutes) . Referee(minutes, num_finished);
+    report(minutes, num_crossings) . Referee(minutes, num_finished, num_crossings);
 
 %%% TODO (Exercise 2):
 %%% Add the four Adventurer processes to this definition
@@ -122,15 +125,20 @@ init
          back_adventurer | back_flashlight | back_referee -> back},
        Adventurer(1,start) || Adventurer(2,start)  || 
        Adventurer(5,start) || Adventurer(10,start) || 
-       Flashlight(start)   || Referee(0, 0)
+       Flashlight(start)   || Referee(0, 0, 0)
      ));
 
 %%%%%%%
 % Extra
 %%%%%%%
 
-% Fórmula em μ-calculus de que é possível que todos atravessem a ponte em 17 minutos.
-% < true* . report(17) > true
+% Fórmula em μ-calculus de que é possível que todos atravessem a ponte em 17 minutos, e 5
+% travessias.
+% < true* . report(17, 5) > true
 
 % Fórmula que prova que qualquer travessia inferior a 17 minutos e impossível.
-% forall x : Nat . val(x < 17) => [true* . report(x)] false
+% NÃO TERMINA
+% forall x : Nat . forall y : Nat . val(x < 17) || val(y < 5) => [true* . report(x, y)] false
+% Alternativas
+% forall x : Nat . val(x < 17) => [true* . report(x, 5)] false
+% forall y : Nat . val(y < 5) => [true* . report(17, y)] false
