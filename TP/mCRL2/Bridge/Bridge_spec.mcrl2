@@ -1,3 +1,17 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Tutorial de mCRL2
+% 
+% Alef Keuffer A91683
+% Alexandre Baldé A70737
+% 
+% Parte da nossa solução foi retirada da documentação do mCRL2, em
+% https://www.mcrl2.org/web/user_manual/tutorial/ropebridge/index.html.
+% 
+% No final, apresentamos fórmulas em mu-calculus com propriedades
+% que achámos interessantes provar.
+% Estas são accessíveis na IDE do mCRL2, após abrir o projeto.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 % Specification for the rope bridge problem
 % (based on Bas Ploeger, 2008)
 
@@ -81,6 +95,10 @@ proc Adventurer(crossing_time : Int, pos : Position) =
 %%% TODO (Exercise 5):
 %%% Add Referee process definition here
 
+% Note-se que a nossa versão do processo Referee armazena não só os minutos
+% que a travessia demora, mas também o número de vezes que a lanterna atravessou a
+% ponte, em ambos sentidos.
+
 proc Referee(minutes : Int, num_finished : Int, num_crossings : Int) =
   sum s, s' : Int . forward_referee(s, s')
                   . Referee(minutes + max(s, s'), num_finished + 2, num_crossings + 1)
@@ -108,7 +126,7 @@ proc Referee(minutes : Int, num_finished : Int, num_crossings : Int) =
 %    Adventurer(1,start) || Adventurer(2,start) || Adventurer(5,start) || Adventurer(10,start) || Flashlight(start)
 %  );
 
-% A última, com o Referee
+% A próxima, com o Referee, mas ainda incorreta.
 %init
 %  allow({forward, back, report},
 %    comm({forward_adventurer | forward_adventurer | forward_flashlight -> forward,
@@ -120,8 +138,7 @@ proc Referee(minutes : Int, num_finished : Int, num_crossings : Int) =
 % Initial process definition
 init
   allow({forward, back, report},
-   comm({forward_adventurer | forward_adventurer | forward_flashlight | forward_referee
-            -> forward,
+   comm({forward_adventurer | forward_adventurer | forward_flashlight | forward_referee -> forward,
          back_adventurer | back_flashlight | back_referee -> back},
        Adventurer(1,start) || Adventurer(2,start)  || 
        Adventurer(5,start) || Adventurer(10,start) || 
