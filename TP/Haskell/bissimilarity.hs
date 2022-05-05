@@ -11,6 +11,7 @@ type Name = String
 
 type LTS = M.Map State (S.Set (Name, State))
 
+-- LTS da ficha 2, exercício 1.
 lts :: LTS
 lts = M.fromList [
     (1, S.fromList [("a", 2), ("a", 3)]),
@@ -27,19 +28,65 @@ lts = M.fromList [
     (9, S.empty)
     ]
 
+{-
+Os dois LTS abaixo estão nos slides sobre LTS, no segmento
+da bissimulação, página 21.
+-}
 lts2 :: LTS
 lts2 = M.fromList [
     (1, S.fromList [("a", 2)]),
 
-    (2, S.fromList [("b", 3), ("c", 4)])
+    (2, S.fromList [("c", 3), ("c", 4)])
     ]
 
 lts3 :: LTS
 lts3 = M.fromList [
     (5, S.fromList [("a", 6), ("a", 8)]),
 
-    (6, S.fromList [("b", 7)]),
+    (6, S.fromList [("c", 7)]),
     (8, S.fromList [("c", 9)])
+    ]
+
+lts2' :: LTS
+lts2' = M.fromList [
+    (1, S.fromList [("a", 2)]),
+
+    (2, S.fromList [("c", 3), ("b", 4)])
+    ]
+
+lts3' :: LTS
+lts3' = M.fromList [
+    (5, S.fromList [("a", 6), ("a", 8)]),
+
+    (6, S.fromList [("c", 7)]),
+    (8, S.fromList [("b", 9)])
+    ]
+
+{-
+LTS da ficha 5, exercício 5.
+Nenhum deles é bissimilar a algum dos outros.
+-}
+
+act1 :: LTS
+act1 = M.fromList [
+    (1, S.fromList [("a", 2)]),
+    (2, S.fromList [("b", 3)]),
+    (3, S.fromList [("a", 1), ("b", 3)])
+    ]
+
+act2 :: LTS
+act2 = M.fromList [
+    (1, S.fromList [("a", 2)]),
+    (2, S.fromList [("b", 2), ("b", 3)]),
+    (3, S.fromList [("a", 1)])
+    ]
+
+act3 :: LTS
+act3 = M.fromList [
+    (1, S.fromList [("a", 2)]),
+    (2, S.fromList [("b", 3), ("b", 4)]),
+    (3, S.fromList [("b", 4)]),
+    (4, S.fromList [("b", 4), ("a", 1)])
     ]
 
 -- Given an LTS, a state and a label, return the set of states in that LTS which are reachable from
@@ -87,10 +134,13 @@ bissimulation l1 l2 p q = helper [(p,q)] (S.fromList [(p, q)])
                 -- transitivo abaixo tratará de calcular (b', a') por nós.
                 newPairs' = S.map (\(a, b) -> (b, a)) $ extendBissim l2 l1 t s
                 extension = newPairs `S.union` newPairs'
-            in case (null newPairs /= null newPairs', extension `S.isSubsetOf` set) of
+                set' = (set `S.union` extension)
+                visitedAllFrom1 = S.map fst set' == S.fromList (M.keys act1)
+                visitedAllFrom2 = S.map snd set' == S.fromList (M.keys act2)
+            in case (null newPairs /= null newPairs', set' == set) of
                     (True, _) -> S.empty
-                    (_, True) -> set
-                    (_, _)    -> helper (S.toList extension ++ rest) (set `S.union` extension)
+                    (_, True) -> set'
+                    (_, _)    -> helper (S.toList extension ++ rest) set'
 
 transitiveClosure :: Ord a => S.Set (a, a) -> S.Set (a, a)
 transitiveClosure closure = helper closure'
