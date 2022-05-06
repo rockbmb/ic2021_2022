@@ -3,15 +3,24 @@
 import qualified Data.Map as M
 import qualified Data.Maybe as May
 import qualified Data.Set as S
-import Data.List (nub)
-
 
 type State = Integer
 type Name = String
 
 type LTS = M.Map State (S.Set (Name, State))
 
--- LTS da ficha 2, exercício 1.
+{-
+LTS da ficha 2, exercício 1.
+
+Para verificar que 1 ~ 4 ~ 6 ~ 7, fazer
+bissimulation lts lts 1 4
+bissimulation lts lts 4 6
+bissimulation lts lts 6 7
+
+ou, opcionalmente,
+
+transitiveClosure $ bissimulation lts lts 6 7
+-}
 lts :: LTS
 lts = M.fromList [
     (1, S.fromList [("a", 2), ("a", 3)]),
@@ -31,6 +40,16 @@ lts = M.fromList [
 {-
 Os dois LTS abaixo estão nos slides sobre LTS, no segmento
 da bissimulação, página 21.
+
+O estado 1 de lts2 é bissimilar ao estado 5 de lts3, mas
+isso não ocorre para os mesmos estados em lts2'/lts3'.
+
+Para verificar que 1 ~ 5 para lts1 e lts2, e que 1 ~/~ 5 para lts2' e lts3',
+fazer
+
+bissimulation lts2 lts3 1 5
+
+bissimulation lts2' lts3' 1 5
 -}
 lts2 :: LTS
 lts2 = M.fromList [
@@ -64,7 +83,13 @@ lts3' = M.fromList [
 
 {-
 LTS da ficha 5, exercício 5.
-Nenhum deles é bissimilar a algum dos outros.
+Nenhum dos seus estados iniciais é bissimilar a nenhum dos outros.
+
+bissimulation act1 act2 1 1 == S.fromList []
+
+bissimulation act2 act3 1 1 == S.fromList []
+
+bissimulation act1 act3 1 1 == S.fromList []
 -}
 
 act1 :: LTS
@@ -120,6 +145,11 @@ extendBissim lts1 lts2 s t =
                                       , t' <- S.toList $ next lts2 t lab]
             else mempty
 
+{-
+Dados dois LTS l1 e l2, e dois estados iniciais p \in l1, q \in l2, calcula a
+relação de bissimulação que contém o par, se existir.
+Se não existir, devolverá o conjunto vazio (S.fromList []).
+-}
 bissimulation :: LTS -> LTS -> State -> State -> S.Set (State, State)
 bissimulation l1 l2 p q = helper [(p,q)] (S.fromList [(p, q)])
     where
@@ -134,14 +164,21 @@ bissimulation l1 l2 p q = helper [(p,q)] (S.fromList [(p, q)])
                 -- transitivo abaixo tratará de calcular (b', a') por nós.
                 newPairs' = S.map (\(a, b) -> (b, a)) $ extendBissim l2 l1 t s
                 extension = newPairs `S.union` newPairs'
+                -- Nova relação construída a partir da calculada até ao momento,
+                -- acrescida dos pares calculados nesta iteração.
+                -- Se se tiver chegado a um ponto fixo, termina-se.
                 set' = (set `S.union` extension)
-                visitedAllFrom1 = S.map fst set' == S.fromList (M.keys act1)
-                visitedAllFrom2 = S.map snd set' == S.fromList (M.keys act2)
+                -- Se for possível dar passos num LTS que não é possível no outro,
+                -- a relação devolvida tem de ser vazia.
             in case (null newPairs /= null newPairs', set' == set) of
                     (True, _) -> S.empty
                     (_, True) -> set'
                     (_, _)    -> helper (S.toList extension ++ rest) set'
 
+{-
+Dada uma relação de equivalência reduzida, calcula o seu fecho transitivo
+completando a relação com os pares simétricos, reflexivos e transitivos.
+-}
 transitiveClosure :: Ord a => S.Set (a, a) -> S.Set (a, a)
 transitiveClosure closure = helper closure'
     where
